@@ -1,118 +1,145 @@
-# Network slicing environment
+# ネットワークスライシング環境
 
-## Description
+## 📚 ドキュメント
 
-Source code of the paper "[Model-Based Reinforcement Learning with Kernels for Resource Allocation in RAN Slices](https://doi.org/10.1109/TWC.2022.3195570)" published in IEEE Transactions on Wireless Communications. The code provides a network slicing environment where time-frequency resources must be allocated among several network slices in consecutive decision stages. The environtment implements the OpenAI Gym https://github.com/openai/gym interface and can interact Stable-Baselines RL agents https://github.com/hill-a/stable-baselines and Keras-RL agents https://github.com/keras-rl/keras-rl. Additionally, the code includes a novel model-based RL control algorithm (KBRL). At each decision stage, the control agent observes a set of variables describing the state of the system. Based on these observations, the agent makes a resource allocation decision specifying the resource blocks, RBs, assigned to each slice for a number of upcoming radio frames (observation period). At the end of each observation period, the agent receives a signal indicating the fulfillment or violation of the service level agreement (SLA) for each slice during that period. The end of an observation period determines the start of a new decision stage. The objective of the control agent is to allocate the resources efficiently (i.e. use the minimum required number of RBs) while statisfying the SLAs of the network slices.
+このリポジトリを使い始める前に、以下のドキュメントを参照してください：
+
+| ドキュメント | 内容 |
+|---|---|
+| [CODEBASE_GUIDE.md](./CODEBASE_GUIDE.md) | コードベース全体の解説（研究初心者向けの背景知識・アルゴリズム解説を含む） |
+| [SETUP_WITH_UV.md](./SETUP_WITH_UV.md) | uv 仮想環境でのセットアップ・実行手順 |
+
+---
+
+## 概要
+
+本コードは、論文「[Model-Based Reinforcement Learning with Kernels for Resource Allocation in RAN Slices](https://doi.org/10.1109/TWC.2022.3195570)」（IEEE Transactions on Wireless Communications 掲載）のソースコードです。複数のネットワークスライスに対して時間・周波数リソースを連続的に割り当てるネットワークスライシング環境を提供します。
+
+この環境は OpenAI Gym インターフェース（https://github.com/openai/gym）を実装しており、Stable-Baselines RL エージェント（https://github.com/hill-a/stable-baselines）および Keras-RL エージェント（https://github.com/keras-rl/keras-rl）と連携できます。また、新しいモデルベース RL 制御アルゴリズム（KBRL）も含まれています。
+
+各意思決定ステージでは、制御エージェントはシステムの状態を表す変数群を観測し、その観測に基づいて、次の複数の無線フレーム（観測期間）における各スライスへのリソースブロック（RB）割当を決定します。観測期間の終了時に、エージェントはその期間における各スライスの SLA（サービスレベルアグリーメント）の達成・違反を示すシグナルを受け取ります。エージェントの目的は、各スライスの SLA を満たしながら、使用する RB 数を最小化すること（効率的なリソース利用）です。
 
 <img src="img/general_diagram.png" align="center" width="40%"/>
 
-## Acknowledgements
+## 謝辞
 
-This work is part of project [AriSe2](https://arise.upct.es) supported by Grant PID2020-116329GB-C22 funded by MICIU / AEI / 10.13039/501100011033
+本研究は、MICIU / AEI / 10.13039/501100011033 の助成（Grant PID2020-116329GB-C22）により支援されたプロジェクト [AriSe2](https://arise.upct.es) の一部です。
 
 <img src="img/MICINN_Gob_Web_AEI_2.jpg" align="center" width="40%"/>
 
-## How to use it
+## 使い方
 
-### Requirements
+### 必要なパッケージ
 
-The enviroment requires Open-AI gym, Numpy and Pandas packages. The RL agents are provided by stable-baselines (version 2, which uses TensorFlow), and the scripts for plotting results use scipy and matplotlib. The following versions of these packages are known to work fine with the environment:  
+この環境は Open-AI gym、NumPy、Pandas パッケージが必要です。RL エージェントは stable-baselines（バージョン2、TensorFlow 使用）で提供され、結果プロット用スクリプトには scipy と matplotlib が必要です。以下のバージョンで動作確認済みです：
 
-gym==0.15.3  
-numpy==1.19.1  
-pandas==0.25.2  
-stable-baselines==2.10.1  
-tensorflow==1.9.0  
-scipy==1.5.4  
-matplotlib==3.3.4  
+```
+gym==0.15.3
+numpy==1.19.1
+pandas==0.25.2
+stable-baselines==2.10.1
+tensorflow==1.9.0
+scipy==1.5.4
+matplotlib==3.3.4
+```
 
-To run the NAF agent, Keras and Keras-RL are also required. The tested versions are:  
-Keras==2.2.1  
-keras-rl==0.4.2  
+NAF エージェントを使用する場合は Keras と Keras-RL も必要です：
 
-It is recommended to use a python virtual environment to install the above packages.
+```
+Keras==2.2.1
+keras-rl==0.4.2
+```
 
-### Instalation
+> **uv を使った仮想環境でのセットアップ手順** は [SETUP_WITH_UV.md](./SETUP_WITH_UV.md) を参照してください。
 
-1. Clone or download the repository in your local machine
+### インストール
 
-2. Open a terminal window and (optionally) activate the virtual environment
+1. リポジトリをクローンまたはダウンロードする
 
-3. Go to the gym-ran_slice folder in the terminal window 
+2. ターミナルを開き、（必要に応じて）仮想環境を有効化する
 
-4. Once in the gym-ran_slice folder run:
+3. ターミナルで `gym-ran_slice` フォルダに移動する
+
+4. 以下を実行する：
 ```python
 pip install -e .
 ```
 
-### Experiment scripts
+### 実験スクリプト
 
-There are four scripts for launching simulation experiments:
+シミュレーション実験を実行するスクリプトが4つあります：
 
-- experiments_rl.py: runs the experiments with the RL agents of stable-baselines  
-- experiments_kbrl.py: runs the experiments with the proposed KBRL algorithm  
-- experiments_naf.py: runs the experiments with the NAF algorithm provided by keras-rl  
-- experiment_dqn.py: runs the experiments with the DQN algorithm provided by stable-baselines  
+- `experiments_rl.py`: stable-baselines の RL エージェントによる実験
+- `experiments_kbrl.py`: 提案手法 KBRL アルゴリズムによる実験
+- `experiments_naf.py`: keras-rl の NAF アルゴリズムによる実験
+- `experiments_dqn.py`: stable-baselines の DQN アルゴリズムによる実験
 
-And four scripts for plotting results:  
+結果プロット用スクリプトが4つあります：
 
-- plot_results.py: plots the learning curves of the algorithms in the scenario given as a input (e.g. ```python plot_results.py 0``` plots paper's figure 3)  
-- plot_trained_results.py: plots the performance metrics during the inference phase of the MBRL algorithms (paper's figure 6)  
-- plot_adjustment_results.py: plots the adjustment rate of KBRL (paper's figure 7)  
-- plot_accuracy_results.py: plots the accuracy of KBRL (paper's figure 8)
-- plot_oracle_results.py: plots the performance metrics of KBRL, DNQ, NAF and ORACLE (paper's figure 10)  
+- `plot_results.py`: 入力シナリオの学習曲線をプロット（例：`python plot_results.py 0` で論文の Figure 3 を再現）
+- `plot_trained_results.py`: MBRL アルゴリズムの推論フェーズにおける性能指標をプロット（論文 Figure 6）
+- `plot_adjustment_results.py`: KBRL の調整率をプロット（論文 Figure 7）
+- `plot_accuracy_results.py`: KBRL の精度をプロット（論文 Figure 8）
+- `plot_oracle_results.py`: KBRL・DQN・NAF・ORACLE の性能指標をプロット（論文 Figure 10）
 
-Figure 3 of the paper showing the performance curves for a scenario with 5 eMMB RAN slices, where KBRL attains the lowest rate of SLA violations while using less resources than model-free RL algorithms:
-<img src="figures/subplots_0.png" align="center" width="100%"/>  
+5つの eMBB RAN スライスを持つシナリオにおける性能曲線（論文 Figure 3）。KBRL が最も少ない SLA 違反率を達成し、かつモデルフリー RL より少ないリソースを使用しています：
 
-## Project structure
+<img src="figures/subplots_0.png" align="center" width="100%"/>
 
-The following files implement the environment:  
+## プロジェクト構成
 
-- node_b.py  
-- slice_ran.py  
-- slice_l1.py  
-- channel_models.py  
-- traffic_generators.py  
-- schedulers.py  
-- ./gym-ran_slice/gym_ran_slice/ran_slice.py  
+環境を実装するファイル：
 
-The KBRL agent is implemented in:
+- `node_b.py`
+- `slice_ran.py`
+- `slice_l1.py`
+- `channel_models.py`
+- `traffic_generators.py`
+- `schedulers.py`
+- `./gym-ran_slice/gym_ran_slice/ran_slice.py`
 
-- kbrl_control.py
-- ./algorithms/kernel.py
-- ./algorithms/projectron.py
+KBRL エージェントの実装：
 
-The following files are required to build the experiments:
+- `kbrl_control.py`
+- `./algorithms/kernel.py`
+- `./algorithms/projectron.py`
 
-- scenario_creator.py: creates the environments and the KBRL agents  
-- wrapper.py: allows the interaction with stable-baselines  
-- naf_agent_creator.py: creates NAF agents   
+実験構築に必要なファイル：
 
-## How to cite this work
+- `scenario_creator.py`: 環境と KBRL エージェントを生成
+- `wrapper.py`: stable-baselines との連携を可能にするラッパー
+- `naf_agent_creator.py`: NAF エージェントを生成
 
-The code of this repository:
+> コードの詳細な解説は [CODEBASE_GUIDE.md](./CODEBASE_GUIDE.md) を参照してください。
 
-@misc{net_slice,  
-    title={Network slicing environment},  
-    author={Juan J. Alcaraz},  
-    howpublished = {\url{https://github.com/jjalcaraz-upct/network-slicing/}},  
-    year={2022}  
+## 引用情報
+
+本リポジトリのコード：
+
+```bibtex
+@misc{net_slice,
+    title={Network slicing environment},
+    author={Juan J. Alcaraz},
+    howpublished = {\url{https://github.com/jjalcaraz-upct/network-slicing/}},
+    year={2022}
 }
+```
 
-The paper where KBRL was presented:
+KBRL を発表した論文：
 
+```bibtex
 @misc{alcaraz2022,
-  author = {Alcaraz, Juan J. and Losilla, Fernando and Zanella, Andrea and Zorzi, Michele},  
-  title = title = {Model-{Based} {Reinforcement} {Learning} {With} {Kernels} for {Resource} {Allocation} in {RAN} {Slices}},,   
-  publisher = {IEEE},  
-  journal = {IEEE Transactions on Wireless Communications},  
+  author = {Alcaraz, Juan J. and Losilla, Fernando and Zanella, Andrea and Zorzi, Michele},
+  title = {Model-{Based} {Reinforcement} {Learning} {With} {Kernels} for {Resource} {Allocation} in {RAN} {Slices}},
+  publisher = {IEEE},
+  journal = {IEEE Transactions on Wireless Communications},
   year = {2023},
   month = {1},
   pages = {486--501},
   volume = {22},
 }
+```
 
-## Licensing information
+## ライセンス
 
-This code is released under the MIT lisence.
+本コードは MIT ライセンスのもとで公開されています。
