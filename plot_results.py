@@ -103,7 +103,7 @@ if __name__=='__main__':
     #print(algo_names)
     prbs = prbs_values[scenario]
 
-    save_path = './results/scenario_{}/subplots_wkblr'.format(scenario)
+    save_path = './figures/subplots_{}'.format(scenario)
     #save_path = './results/#scenario_{}_QR_margin_self-learn_best/subplots_wkblr'.format(scenario)
 
     # Generate distinct colors from a colormap
@@ -330,7 +330,7 @@ if __name__=='__main__':
             ax_rb.set_ylabel('PRBs', fontsize=18)
             #ax_rb.set_title('Resource Allocation', fontsize=18)
             fig_rb.tight_layout()
-            fig_rb.savefig(save_path.format(scenario)+'_rb', format='png', transparent=True, dpi=300.0)
+            fig_rb.savefig(save_path+'_rb.png', format='png', transparent=True, dpi=300.0)
         
         steps = np.arange(len(violations_mean[0:SPAN]))
         axs[violations_idx].set_title('SLA violations', fontsize=18)
@@ -371,7 +371,7 @@ if __name__=='__main__':
             ax_vio.legend(loc='best', fontsize=18)
             ax_vio.grid()
             fig_vio.tight_layout()
-            fig_vio.savefig(save_path.format(scenario)+'_vio', format='png', transparent=True, dpi=300.0)
+            fig_vio.savefig(save_path+'_vio.png', format='png', transparent=True, dpi=300.0)
         
         steps = np.arange(len(rewards_mean[0:SPAN]))
         axs[rewards_idx].set_title('Rewards', fontsize=18)
@@ -415,7 +415,7 @@ if __name__=='__main__':
             ax_cumvio.legend(loc='best', fontsize=18)
             ax_cumvio.grid() 
             fig_cumvio.tight_layout()
-            fig_cumvio.savefig(save_path.format(scenario)+'_cumvio', format='png', transparent=True, dpi=300.0)
+            fig_cumvio.savefig(save_path+'_cumvio.png', format='png', transparent=True, dpi=300.0)
 
         if has_ues:
             ue_steps = np.arange(len(ue_mean[0:SPAN]))
@@ -478,8 +478,8 @@ if __name__=='__main__':
             fig.tight_layout(rect=[0, 0, 1, 0.95])
 
             if START > 0:
-                fig.savefig(save_path.format(scenario), format='png')
+                fig.savefig(save_path+'.png', format='png')
             else:
                 # fig.savefig('./figures/subplots_{}.svg'.format(scenario), format='svg')
-                fig.savefig(save_path.format(scenario), format='png')
+                fig.savefig(save_path+'.png', format='png')
             # fig.savefig('_subplots_' + scenario + '.svg', format='svg')       
