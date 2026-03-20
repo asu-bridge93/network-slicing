@@ -411,9 +411,20 @@ DQN などの Stable-Baselines3 エージェントが扱える形式に環境を
 | `experiments_rl.py` | PPO, A2C, TRPO など | stable-baselines |
 | `experiments_dqn.py` | DQN | stable-baselines3 |
 | `experiments_naf.py` | NAF (Normalized Advantage Function) | keras-rl |
-| `experiments_bqr.py` | BQR (Binary Quantile Regression) | 独自実装 |
 | `experiment_sppo.py` | Safe PPO | 独自実装 |
-| `qr_control.py` | QR-DQN | 独自実装 |
+
+### 5.3 BQR / QR（Binary / Quantile Regression）の実装
+
+分位点回帰（Quantile Regression = QR）およびバイナリ分位点回帰（BQR）の実装は、ファイル名が `qr_` や `bqr_` で始まるモジュール群に分かれて独自実装されています。モデルの「学習・予測」の数学的実体は `qr_esn.py` などのモデルファイル内に、その予測を「どう基地局のPRB割り当てに活かすか」の強化学習的（バンディット的）なロジックは `qr_control.py` に記述されているという構造です。
+
+| ファイル | 役割 |
+|---|---|
+| `qr_control.py` | **QRエージェント（コントローラ）のメインロジック。**<br>推論結果（分位予測と不確実性）に基づき、マージンを持たせたリソース割当や、K近傍法（KNN）を利用した安全な最適アクション（Safe Action）の選定などを行います。 |
+| `qr_dqrrn.py` | **Deep Quantile Regression Neural Network**<br>ディープラーニングとピンボールロス関数を組み合わせた分位点回帰予測モデルの実装です。 |
+| `qr_esn.py` | **Quantile Regression Echo State Network**<br>RNNの一種であるリザバーコンピューティング（ESN）を利用した時系列予測に対応する分位点回帰モデルの実装です。 |
+| `qr_scenario_creator.py` | シミュレーション環境のパラメータから、特定のQR予測モデルを組み込んでQRエージェントを構成・初期化するファクトリ（生成用スクリプト）として機能します。 |
+| `bqr_control.py` など | SLAの「達成・未達成」を2値（バイナリ）で分類・確率予測し、安全な行動を行うための類似手法（Binary Quantile Regression）のスクリプト群です。 |
+| `experiments_qr.py` | 上記QRエージェントおよびシミュレータを呼び出して、学習と評価を実行する検証用スクリプトです。 |
 
 ---
 
@@ -548,7 +559,57 @@ KBRL では `adjust_action` が実行されたステップを `self.adjusted = 1
 
 ---
 
-## 11. 参考文献
+## 11. SLA計算ロジック（SLA Violation の判定）
+
+各スライスのSLA（Service Level Agreement：通信品質の保証条件）を守れたかどうかの判定（`compute_reward`での評価）は、L1レベル（主に `slice_ran.py`）で各スロット単位での通信状況を集計した結果をもとに行われます。
+
+### mMTC スライスの基準
+mMTCスライスでは **「平均遅延（Delay）」** がSLAの基準となります。
+- 1ステップ（デフォルト100スロット）間の全デバイスの平均遅延が、SLAで定められた上限値 `SLA['delay']` より**小さい（短い）**かどうかで判定されます。
+- `SLA_fulfilled = self.info['delay']/self.slots_per_step < self.SLA['delay']`
+- 遅延が上限を下回っていればSLA達成、上回っていればSLA違反となります。
+
+### eMBB スライスの基準
+eMBBスライスでは **「平均スループット（Throughput）」** がSLAの基準となっています。
+- 1ステップ間に送信できた合計ビット数に基づくスループット `cbr_th` が、SLAで定められた下限値 `SLA['cbr_th']` を**上回っている**かどうかで判定されます。
+- `cbr_th = self.info['cbr_th']/self.observation_time > self.SLA['cbr_th']`
+- コード上では、各ユーザのパケットキュー長（`cbr_queue`）や利用PRB数（`cbr_prb`）も計算はされていますが、最終的なSLA達成フラグ（`SLA_fulfilled`）にはスループットの条件のみが使われています。
+
+これらの判定結果が各ステップの終わりに `node_b.py` に集約され、SLA違反があった場合には違反数に応じた「マイナスのペナルティ（負の報酬 `reward`）」としてエージェントの学習フィードバックに利用されます。
+
+---
+
+## 12. 結果可視化スクリプト（plot_*.py）の役割
+
+各種実験で得られた `.npz` のログデータを可視化・比較するためのスクリプト群です。目的や見たい指標に応じて細かく使い分けられます。
+
+| スクリプト名 | 役割・可視化される内容 | 出力先 |
+|---|---|---|
+| **`plot_results.py`** | **全体の性能推移（報酬・PRB割当数・SLA違反数）** を時間軸に沿って可視化します。<br>`python plot_results.py 0` のようにシナリオ番号を渡して実行します。複数アルゴリズムの収束の速さや時間的安定性を並べて比べるための最もメインのスクリプトです。 | `./figures/` 内 |
+| **`plot_trained_results.py`** | **「リソース消費量（横軸）」と「SLA違反数（縦軸）」のトレードオフ（パレート図）** を描画します。<br>学習後半の収束後のデータ点だけを全シナリオから抽出し、「どのアルゴリズムが一番少ないPRB通信枠で安全にSLAを守れているか」を点とエラーバーで比較・評価します。 | `./figures/trained_figure.png` |
+| **`plot_slices.py`** | 基地局全体ではなく、**スライス個別での詳細な性能** を見るためのスクリプトです。<br>「eMBB単体の処理量」「mMTC単体の遅延」など、スライスごとに切り分けて要求を満たせているかを深く分析します。 | `./figures/` 内 |
+| **`plot_adjustment_results.py`** | **PRB強制調整（Adjustment）の発生率** の推移をプロットします。<br>AIエージェントが基地局の上限を超えた無理なPRB枠を要求し、シミュレータに強制的に削られた割合がどれくらいかを評価します（0に近いほど優秀）。 | `./figures/adjustments.png` |
+| **`plot_accuracy_results.py`** | **内部モデルの予測精度（Accuracy / Hit率）** の向上推移をプロットします。<br>KBRLなど、シミュレーション内部で「将来のSLA達成率」を推論する予測モデルを持っているアルゴリズムの純粋な学習性能分析用です。 | `./figures/accuracies.png` |
+| **`plot_oracle_results.py`** | 未来のトラフィックを完璧に先読みできる**「オラクル最適解（理想的な上限）」と各アルゴリズムを厳密に比較する** プロットを行います。 | `./figures/` 内 |
+
+---
+
+## 13. QRアルゴリズムのパラメータ「cost / nocost」について
+
+実験結果のディレクトリ名（例：`QR_15_0_0_2_01_nocost` や `QR_15_0_3_2_01_cost`）の末尾につく `_cost` と `_nocost` は、QR（分位点回帰）エージェントの内部計算である **「リソース（PRB）要求量に対するコスト（ペナルティ）の有無」** を意味しています。
+
+コード内部（主となる `qr_control.py` 内など）でのアクション（要求PRB量）のスコア決定時は、以下のようにスコア付けされます。
+
+> `最終評価スコア = (SLA到達期待度) − (リソースコスト係数 × 基地局の何割のPRBを要求しているか)`
+
+*   **`_nocost`（リソースコスト係数：`0`）の場合**:
+    どれだけ余分に通信枠（PRB）を要求したとしても、スコア上のペナルティが発生しません。つまり「SLAさえ守れれば、コスト度外視でリソースを確保しておく」という強気な学習になります。SLA違反は起きにくく安全な反面、インフラを浪費しやすくなります。
+*   **`_cost`（リソースコスト係数：`0.3`など）の場合**:
+    要求するPRBが多いほど、最終評価スコアから罰金が引かれます。「SLAはなんとか守りつつも、極力少ないPRB数に抑えてギリギリで通信を済ませる（余った分を他に譲る）」という全体最適や省エネを重視した振る舞いを獲得するエージェントになります。
+
+---
+
+## 14. 参考文献
 
 - [論文 (IEEE TWC)](https://doi.org/10.1109/TWC.2022.3195570)
 - [GitHub リポジトリ](https://github.com/jjalcaraz-upct/network-slicing/)
