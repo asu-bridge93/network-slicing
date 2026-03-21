@@ -160,15 +160,15 @@ python experiments_rl.py
 # 例: シナリオ0 の学習曲線（論文 Figure 3 相当）
 python plot_results.py 0
 
-python plot_slice_results.py 0
+python plot_slices.py 0
 
-# 推論フェーズの結果
+# 推論フェーズの結果 (シナリオ横断)
 python plot_trained_results.py
 
-# KBRL の調整率
+# KBRL の調整率 (シナリオ横断)
 python plot_adjustment_results.py
 
-# KBRL の精度
+# KBRL の精度 (シナリオ横断)
 python plot_accuracy_results.py
 ```
 
