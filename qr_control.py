@@ -71,7 +71,7 @@ class QR_Control:
         final_uncertainties = np.zeros(self.n_slices, dtype=np.float64)
         temp_predictions = np.zeros(self.n_slices, dtype=np.float64)
         temp_thresholds = np.zeros(self.n_slices, dtype=np.float64)
-        self.len_safe_set = [0, 0, 0]
+        self.len_safe_set = [0 for _ in range(self.n_slices)]
         self.choices = [None for _ in self.learners]
 
         for i, h in enumerate(self.learners):
@@ -312,8 +312,8 @@ class QR_Control:
         else:
             learning_cutoff = learning_time
         
-        action_choices = {0: {'knn': 0, 'safe': 0, 'random': 0, 'fallback': 0}, 1: {'knn': 0, 'safe': 0, 'random': 0, 'fallback': 0}, 2: {'knn': 0, 'safe': 0, 'random': 0, 'fallback': 0}}
-        violation_per_choice = {0: {'knn': 0, 'safe': 0, 'random': 0, 'fallback': 0}, 1: {'knn': 0, 'safe': 0, 'random': 0, 'fallback': 0}, 2: {'knn': 0, 'safe': 0, 'random': 0, 'fallback': 0}}
+        action_choices = {i: {'knn': 0, 'safe': 0, 'random': 0, 'fallback': 0} for i in range(self.n_slices)}
+        violation_per_choice = {i: {'knn': 0, 'safe': 0, 'random': 0, 'fallback': 0} for i in range(self.n_slices)}
 
         for i in range(steps):
             self.current_step = i
