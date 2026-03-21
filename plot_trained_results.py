@@ -15,11 +15,11 @@ import os
 START = 40000
 END = 49500
 
-titles = ['Scenario 1', 'Scenario 2', 'Scenario 3']
+titles = ['Scenario 0', 'Scenario 1', 'Scenario 2']
 scenarios = [0, 1, 2]
 
-algo_names = ['A2C', 'PPO1', 'PPO2', 'TRPO', 'SAC', 'TD3', 'NAF', 'KBRL_97','KBRL_99']
-labels = ['A2C', 'PPO1', 'PPO2', 'TRPO', 'SAC', 'TD3', 'NAF', 'KBRL 0.97', 'KBRL 0.99']
+algo_names = ['A2C', 'PPO1', 'PPO2', 'TRPO', 'SAC', 'TD3', 'NAF', 'KBRL']
+labels = ['A2C', 'PPO1', 'PPO2', 'TRPO', 'SAC', 'TD3', 'NAF', 'KBRL']
 
 SPAN = END - START
 
