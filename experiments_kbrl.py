@@ -20,7 +20,7 @@ import concurrent.futures as cf
 from scenario_creator import create_env
 from kbrl_scenario_creator import create_kbrl_agent
 
-scenarios = [1] # 0,1,2
+scenarios = [0, 1, 2, 3]
 accuracy_list = [[0.97, 0.99]]
 
 scenario_1 = { 'n_prbs': 100, 'n_embb': 3, 'n_mmtc': 0}
