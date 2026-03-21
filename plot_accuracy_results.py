@@ -10,11 +10,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-titles = ['Scenario 1', 'Scenario 2', 'Scenario 3']
+titles = ['Scenario 0', 'Scenario 1', 'Scenario 2']
 scenarios = [0, 1, 2]
 
-algo_names = ['KBRL_97', 'KBRL_99']
-labels = ['KBRL 0.97', 'KBRL 0.99']
+algo_names = ['KBRL']
+labels = ['KBRL']
 WINDOW = 400
 SPAN = 20000
 
