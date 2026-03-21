@@ -101,16 +101,20 @@ def create_qr_agent(rng, n, scenarios, quantile, embb_sla, mmtc_sla, qr_params, 
 
     # Create one learner instance per mMTC slice (with its success rate SLA)
     for slice_idx in range(n_mmtc):
+        # For upper constraints (e.g., delay), a demand of '0.05 quantile' means we want 95% reliability.
+        # This requires tracking the 95th percentile (0.95) of the delay distribution, not the 5th.
+        actual_quantile = 1.0 - quantile if mmtc_sla['type'] == 'upper' else quantile
+        
         sv_store = SV(dimension=mmtc_dim+1+2, budget=qr_params['budget'])
-        kernel = SimpleGaussianKernel(gamma=qr_params['gamma'])
-        algorithm = KernelizedOnlineQuantileRegressor(sv=sv_store, kernel=kernel, quantile=quantile, 
+        kernel = MaternKernel(length_scale=qr_params['matern_length_scale'], nu=qr_params['matern_nu'])
+        algorithm = KernelizedOnlineQuantileRegressor(sv=sv_store, kernel=kernel, quantile=actual_quantile, 
                                                       learning_rate=qr_params['learning_rate'],
                                                       gradient_penalty = qr_params['gradient_penalty'])
         
         learner = QR_Learner(
             algorithm=algorithm, 
             indexes=slice(i, i + mmtc_dim), 
-            sla_threshold=mmtc_sla['threshold'],
+            sla_threshold=mmtc_sla['threshold'] * slots_per_step / norm_const_mmtc['delay'],
             constraint_type=mmtc_sla['type'],
             kpi_key=mmtc_sla['kpi_key'], # Assumes unique keys for KPIs
             kpi_index = index

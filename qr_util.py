@@ -135,7 +135,7 @@ class KernelizedOnlineQuantileRegressor:
         """
         return self._get_prediction_and_uncertainty(x)
     
-    def update(self, x, y_true, sla_threshold): # , sla_threshold
+    def update(self, x, y_true, sla_threshold, constraint_type='lower'):
         """
         This is the new learning rule based on pinball loss.
         """
@@ -146,12 +146,15 @@ class KernelizedOnlineQuantileRegressor:
         if error > 0:
             # Standard under-prediction update
             gradient_update = self.learning_rate * self.quantile
-            #if y_true >= sla_threshold and prediction < sla_threshold:
-            #    gradient_update *= (self.gradient_penalty / 5) 
         else:
             # Standard over-prediction update
             gradient_update = -self.learning_rate * (1 - self.quantile)
-            if y_true < sla_threshold and prediction >= sla_threshold:
+            # Gradient penalty fires when the model failed to warn about a violation:
+            # lower constraint: violation when y_true < threshold (model over-predicted)
+            # upper constraint: violation when y_true > threshold (model under-predicted penalty)
+            if constraint_type == 'lower' and y_true < sla_threshold and prediction >= sla_threshold:
+                gradient_update *= self.gradient_penalty
+            elif constraint_type == 'upper' and y_true > sla_threshold and prediction <= sla_threshold:
                 gradient_update *= self.gradient_penalty
         # Step 3: Add the new data point x as a support vector and set its coefficient
         self.sv.add_support_vector(x, gradient_update, y_true)

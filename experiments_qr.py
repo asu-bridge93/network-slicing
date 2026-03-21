@@ -22,15 +22,15 @@ from scenario_creator import create_env
 from qr_scenario_creator import create_qr_agent
 import time
 
-scenarios = [0] # ,1,2
+scenarios = [1] # 0,1,2
 quantile_list = [0.05] # , 0.01, 0.1, 0.25   0.05, 0.1, 0.25, 0.5 # , 0.05, 0.1
 
 # We define the SLA constraints for each slice type
 # For eMBB, let's assume a max delay constraint
 embb_sla = {'threshold': [0.5e6, 0.5e6, 1e6], 'quantile': quantile_list, 'type': 'lower', 'kpi_key': 'l1_info'} # Delay > 3e6
 
-# For mMTC, let's assume a minimum success rate constraint
-mmtc_sla = {'threshold': 0.99, 'quantile': quantile_list, 'type': 'lower', 'kpi_key': 'l1_info'} # Success Rate > 99%
+# For mMTC, the true evaluated metric is Delay < 10000ms (matching SLA_mmtc in scenario_creator.py)
+mmtc_sla = {'threshold': 10000, 'quantile': quantile_list, 'type': 'upper', 'kpi_key': 'l1_info'}
 
 scenario_1 = { 'n_prbs': 100, 'n_embb': 3, 'n_mmtc': 0}
 scenario_2 = { 'n_prbs': 150, 'n_embb': 3, 'n_mmtc': 2}
@@ -72,11 +72,10 @@ gradient_dict = {1: '1', 2: '2', 5: '5', 10: '10'}
 epsilon_dict = {0: '0', 0.05: '005', 0.1: '01', 0.2: '02', 0.3: '03', 0.5: '05', 1: '1'}
 run_list = list(range(RUNS))
 algo_name = 'QR'
-name = algo_name + '_' + matern_dict[QR_PARAMS['matern_nu']]
-name = name + '_' + explo_dict[QR_PARAMS['exploration_factor']]
-name = name + '_' + cost_dict[QR_PARAMS['resource_cost_factor']]
-name = name + '_' + gradient_dict[QR_PARAMS['gradient_penalty']]
-name = name + '_' + epsilon_dict[QR_PARAMS['epsilon']]
+if QR_PARAMS['resource_cost_factor'] > 0:
+    name = algo_name + '_cost'
+else:
+    name = algo_name + '_nocost'
 
 class Evaluator():
     def __init__(self, scenario, quantile):
@@ -84,7 +83,7 @@ class Evaluator():
         self.quantile = quantile
         a = int(quantile*100)
         self.a = a
-        self.path = './results/scenario_{}/{}_cost{}/'.format(scenario, name, cost_dict[QR_PARAMS['resource_cost_factor']])
+        self.path = './results/scenario_{}/{}/'.format(scenario, name)
         if not os.path.isdir(self.path):
             try:
                 os.makedirs(self.path)
@@ -96,7 +95,7 @@ class Evaluator():
     def evaluate(self, i):
         seed = int(time.time()+i)
         rng = default_rng(seed = seed)
-        node_env = create_env(rng, all_scenarios = all_scenarios, n = self.scenario, slots_per_step = SLOT_PER_STEP, penalty = PENALTY, quantile = int(quantile*100))
+        node_env = create_env(rng, all_scenarios = all_scenarios, n = self.scenario, slots_per_step = SLOT_PER_STEP, penalty = PENALTY, quantile = int(self.quantile*100))
         print('test {}, quantile {}, run {}: Environment created!'.format(name, self.a, i))
         qr_agent = create_qr_agent(rng, self.scenario, all_scenarios, quantile = self.quantile, 
                                      embb_sla = embb_sla, mmtc_sla = mmtc_sla, qr_params = QR_PARAMS, slots_per_step = SLOT_PER_STEP )
@@ -120,5 +119,5 @@ if __name__=='__main__':
         # ################################################################
         # use this code for parallel execution
         with cf.ProcessPoolExecutor(PROCESSES) as E:
-            results = E.map(evaluator.evaluate, run_list)
+            results = list(E.map(evaluator.evaluate, run_list))
         # ################################################################
