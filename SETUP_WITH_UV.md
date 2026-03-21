@@ -160,6 +160,8 @@ python experiments_rl.py
 # 例: シナリオ0 の学習曲線（論文 Figure 3 相当）
 python plot_results.py 0
 
+python plot_slice_results.py 0
+
 # 推論フェーズの結果
 python plot_trained_results.py
 
