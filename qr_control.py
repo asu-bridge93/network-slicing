@@ -209,10 +209,6 @@ class QR_Control:
                             chosen_action_normalized = np.max(successful_actions_normalized)
                             best_action_for_slice = int(round(chosen_action_normalized * self.n_prbs))
                             
-                            # Aggressively explore higher PRBs if all known nearest neighbors failed!
-                            jump_prbs = int(max(1, self.n_prbs * 0.10)) # Jump by 10%
-                            best_action_for_slice = min(self.n_prbs, best_action_for_slice + jump_prbs)
-                            
                             x = np.append(l1_state, best_action_for_slice / self.n_prbs)
                             _, best_action_uncertainty = h.algorithm.predict_with_uncertainty(x)
                             margin_prbs = int(round(best_action_uncertainty * self.margin[i]))
