@@ -9,7 +9,7 @@
 ### A-1. SLA閾値・制約タイプの修正
 **対象:** `experiments_qr.py`
 
-**問題:** mMTCのSLAがスループット（成功率0.99以上）と同じ設定になっており、シミュレータ環境の実態（「1ステップあたりの平均遅延が300ms以下」）と完全に乖離していた。
+**問題:** mMTCのSLAがスループット（成功率0.99以上）と同じ設定になっており、シミュレータ環境の実態（「1ステップあたりの平均遅延が10000ms以下」）と完全に乖離していた。
 
 **修正内容:**
 ```python
@@ -17,9 +17,9 @@
 mmtc_sla = {'threshold': 0.99, 'quantile': quantile_list, 'type': 'lower', 'kpi_key': 'l1_info'}
 
 # 修正後
-mmtc_sla = {'threshold': 300, 'quantile': quantile_list, 'type': 'upper', 'kpi_key': 'l1_info'}
+mmtc_sla = {'threshold': 10000, 'quantile': quantile_list, 'type': 'upper', 'kpi_key': 'l1_info'}
 # type='upper': 「しきい値以下が安全」を意味する上限制約
-# threshold=300: 1stepあたりの正規化遅延 (slots_per_step / norm_const_mmtc['delay'])
+# threshold=10000: 実業界の遅延耐性要件に合わせた 10秒 (10000ms) 設定
 ```
 
 ---
@@ -213,8 +213,9 @@ axs[violations_idx].set_yticks(np.arange(0, 1.0, 0.1))
 
 | 分類 | 対象ファイル | 変更の本質 |
 |------|-------------|-----------|
-| A-1 | `experiments_qr.py` | mMTC SLA定義をupper制約（遅延≤300ms）に修正 |
+| A-1 | `experiments_qr.py` | mMTC SLA定義をupper制約（遅延≤10000ms）に修正 |
 | A-2 | `qr_scenario_creator.py` | Quantile追跡方向を反転（0.05→0.95） |
+| A-3 | `qr_scenario_creator.py` | mMTCのカーネルをeMBBと共通化（Gaussian → Matern） |
 | B-1 | `qr_control.py` | RBFカーネルの0バイアスに悲観ペナルティを追加 |
 | B-2 | `qr_control.py` | スコア・フォールバック探索の方向を反転 |
 | B-3 | `qr_control.py` | 過剰割り当てペナルティの符号をupper制約で反転 |
