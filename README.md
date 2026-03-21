@@ -10,6 +10,7 @@
 | [SETUP_WITH_UV.md](./documents/SETUP_WITH_UV.md) | uv 仮想環境でのセットアップ・実行手順 |
 | [mMTC_QR_Fix_Documentations.md](./documents/mMTC_QR_Fix_Documentations.md) | mMTC_QR_Fix の実装解説 |
 | [Scenario1_Implementation_Summary.md](./documents/Scenario1_Implementation_Summary.md) | Scenario1_Implementation の実装解説 |
+| [Comparison_QR_vs_KBRL.md](./documents/Comparison_QR_vs_KBRL.md) | QR と KBRL の比較解説 |
 
 ---
 
