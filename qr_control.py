@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-@author: AsukaMiyazaki
+@author: ArmanTursun
 
 Learner and QR_control
 
@@ -50,7 +50,7 @@ class QR_Control:
         self.margin = [self.rng.integers(2,  5) for _ in self.learners]
 
         self.violation_history = [deque(maxlen=100) for h in learners] # Track the last 100 outcomes
-        self.target_sla_success_rate = [0.99 for h in learners] # The business goal (e.g., 99%)
+        self.target_sla_success_rate = 0.99 # The business goal (e.g., 99%)
         self.current_quantiles = [h.algorithm.quantile for h in learners]
 
     
@@ -71,27 +71,24 @@ class QR_Control:
         final_uncertainties = np.zeros(self.n_slices, dtype=np.float64)
         temp_predictions = np.zeros(self.n_slices, dtype=np.float64)
         temp_thresholds = np.zeros(self.n_slices, dtype=np.float64)
-        self.len_safe_set = [0 for _ in range(self.n_slices)]
-        self.choices = [None for _ in self.learners]
+        this_step_safe_sets = [0 for _ in range(self.n_slices)]
 
         for i, h in enumerate(self.learners):
             l1_state = enriched_state_dict[i]
             
-            # --- Stage 1: Identify all "Plausibly Safe" Actions ---
+            # --- Stage 1: Identify "Plausibly Safe" Actions ---
             if h.constraint_type == 'lower':
-                # eMBB check (cbr_ue is the last local variable in scenario_creator.py)
                 ue_index = self.state_variables_embb.index('cbr_ue')
                 is_empty = (l1_state[ue_index] == 0)
             else:
-                # mMTC check ('devices' is the first variable in scenario_creator.py: ['devices', 'avg_rep', 'delay'])
-                is_empty = (l1_state[0] == 0)
+                is_empty = (l1_state[0] == 0) # devices for mMTC
 
             if self.current_step != 0 and is_empty:
                 intended_action[i] = 0 
                 margin_prbs = 2
                 intended_action_with_margin[i] = intended_action[i] + margin_prbs
                 final_uncertainties[i] = 0
-                self.len_safe_set[i] = 0
+                this_step_safe_sets[i] = 0
                 self.choices[i] = 'safe'
                 continue
             
@@ -99,52 +96,50 @@ class QR_Control:
             random_scores = np.zeros_like(all_actions, dtype=np.float64)
             random_uncertainties = np.zeros_like(all_actions, dtype=np.float64)
             safe_actions = []
+            
             if h.constraint_type == 'lower':
                 best_prediction = -np.inf
             else:
                 best_prediction = np.inf
+                
             best_fallback_action = 0
             best_fallback_uncertainty = 1
             best_safe_score = -np.inf
             best_safe_action = 0
             best_safe_action_uncertainty = 1
-            best_action_for_slice = 0
-            best_action_uncertainty = 1
-            best_action_with_margin_for_slice = 0
             random_scores[0] = -np.inf
+            
             for a in range(1, self.n_prbs + 1):
                 x = np.append(l1_state, a / self.n_prbs)
                 prediction, uncertainty = h.algorithm.predict_with_uncertainty(x)
                 
-                # Pessimistic background for upper (B-1: Extended only)
+                # eSQR EXTENSION: Pessimistic background for upper (B-1)
                 if h.constraint_type == 'upper':
                     prediction = prediction + (h.sla_threshold * 2) * uncertainty
                 
-                # Direction-aware scores (B-2: Extended only)
+                # Direction-aware scores (B-2)
                 if h.constraint_type == 'lower':
-                    random_scores[a] = prediction - uncertainty # Match original SQR snippet
+                    random_scores[a] = prediction - uncertainty
                     optimistic_score = prediction + self.exploration_factor * uncertainty
                 else:
-                    random_scores[a] = -prediction - uncertainty 
+                    random_scores[a] = -prediction - uncertainty
                     optimistic_score = -prediction + self.exploration_factor * uncertainty
                 
                 random_uncertainties[a] = uncertainty
                 
-                # For fallback, we want the best raw prediction
-                # lower -> max prediction; upper -> min prediction
+                # Fallback: find best raw prediction
                 if (h.constraint_type == 'lower' and prediction > best_prediction) or \
                    (h.constraint_type == 'upper' and prediction < best_prediction):
                     best_prediction = prediction
                     best_fallback_action = a     
                     best_fallback_uncertainty = uncertainty
-                    temp_predictions[i] = prediction
-                    temp_thresholds[i] = uncertainty
                     
                 is_safe = False
                 if h.constraint_type == 'lower' and prediction >= h.sla_threshold:
                     is_safe = True
                 elif h.constraint_type == 'upper' and prediction <= h.sla_threshold:
                     is_safe = True
+                    
                 if is_safe:
                     safe_actions.append((a, uncertainty))
                     resource_term = self.resource_cost_factor * (a / self.n_prbs)
@@ -154,12 +149,11 @@ class QR_Control:
                         best_safe_action = a
                         best_safe_action_uncertainty = uncertainty
                     
-            # --- Stage 2: Find the Most Optimistic Action from the Safe Set ---
-            self.len_safe_set[i] = len(safe_actions)
+            # --- Stage 2: Selection ---
+            this_step_safe_sets[i] = len(safe_actions)
             if not safe_actions:
                 if h.algorithm.sv.counter == 0:
                     if h.constraint_type == 'upper':
-                        # No data yet + upper constraint: explore large PRBs (more PRBs = less delay)
                         best_action_for_slice = self.rng.integers(self.n_prbs // 2, self.n_prbs + 1)
                     else:
                         best_action_for_slice = self.rng.integers(0, best_fallback_action + 1)
@@ -191,11 +185,10 @@ class QR_Control:
                         num_neighbors = min(self.k, h.algorithm.sv.counter)
                         k_nearest_indices = sorted_indices[:num_neighbors]
                         k_nearest_outcomes = relevant_outcomes[k_nearest_indices]
-
-                        # direction-aware success mask
+                        
                         if h.constraint_type == 'lower':
                             successful_mask = k_nearest_outcomes >= h.sla_threshold
-                        else:  # 'upper' — smaller is better (e.g. delay)
+                        else:
                             successful_mask = k_nearest_outcomes <= h.sla_threshold
 
                         if np.any(successful_mask):
@@ -210,7 +203,6 @@ class QR_Control:
                             successful_actions_normalized = relevant_actions[k_nearest_indices]
                             chosen_action_normalized = np.max(successful_actions_normalized)
                             best_action_for_slice = int(round(chosen_action_normalized * self.n_prbs))
-                            
                             x = np.append(l1_state, best_action_for_slice / self.n_prbs)
                             _, best_action_uncertainty = h.algorithm.predict_with_uncertainty(x)
                             margin_prbs = int(round(best_action_uncertainty * self.margin[i]))
@@ -221,16 +213,18 @@ class QR_Control:
                         best_action_uncertainty = 1
                         margin_prbs = int(round(best_action_uncertainty * self.margin[i]))
                         self.choices[i] = 'random'
-                        #print('fallback2')
             else:
                 best_action_for_slice = best_safe_action
                 best_action_uncertainty = best_safe_action_uncertainty
                 margin_prbs = int(round(best_action_uncertainty * self.margin[i]))
                 self.choices[i] = 'safe'
+
             best_action_with_margin_for_slice = best_action_for_slice + margin_prbs
             intended_action_with_margin[i] = best_action_with_margin_for_slice
             intended_action[i] = best_action_for_slice
             final_uncertainties[i] = best_action_uncertainty
+
+        self.len_safe_set = this_step_safe_sets
 
         # Adjust actions if total allocation exceeds system capacity
         original_assigned_prbs = intended_action.sum()
@@ -270,21 +264,20 @@ class QR_Control:
                 ue_index = self.state_variables_embb.index('cbr_ue')
                 is_empty = (state_that_led_to_action[ue_index] == 0)
             else:
-                # MMTC: first index is 'devices'
-                is_empty = (state_that_led_to_action[0] == 0)
+                is_empty = (state_that_led_to_action[0] == 0) # devices for mMTC
 
             if is_empty:
                 continue
 
             l1_action = action[i]
             new_l1_state = new_state[h.indexes]
-            #state_variables_embb = ['5th_cbr_th', 'cbr_prb' 
-            #                        'cbr_queue', 'cbr_snr', 'cbr_ue'] 
+            
             if h.constraint_type == 'lower':
-                th_index = self.state_variables_embb.index('5th_cbr_th')
+                th_index = self.state_variables_embb.index('5th_cbr_th')              
                 kpi_value = new_l1_state[th_index]
             else:
-                kpi_value = new_l1_state[2] # index 2 is 'delay' for mMTC
+                kpi_value = new_l1_state[2] # delay for mMTC
+                
             x = np.append(state_that_led_to_action, l1_action / self.n_prbs)               
             # Update the quantile regressor model with the true continuous value
             h.algorithm.update(x, kpi_value, h.sla_threshold, constraint_type=h.constraint_type)
@@ -300,9 +293,8 @@ class QR_Control:
             if self.adjusted and original_action[i] > final_action[i]:
                 adjustment_delta = original_action[i] #- final_action[i]
                 dynamic_penalty = base_penalty_coeff * (adjustment_delta / self.n_prbs)
-
-                # For upper constraints like delay, a penalty means increasing the predicted delay
-                # Since base_penalty_coeff is negative (-20), we must invert it for upper constraints
+                
+                # For upper constraints like delay, penalty means increasing predicted delay
                 if h.constraint_type == 'upper':
                     dynamic_penalty = -dynamic_penalty
 
@@ -387,6 +379,7 @@ class QR_Control:
                 self.violation_history[j].append(cur_violations[j])
                 if len(self.violation_history[j]) == self.violation_history[j].maxlen and (i+ 1) % 1 == 0:
                     recent_success_rate = 1.0 - (sum(self.violation_history[j]) / self.violation_history[j].maxlen)
+                    
                     sign = -1 if h.constraint_type == 'lower' else 1
                     
                     # PRIORITY 1: High Uncertainty Override
@@ -396,7 +389,7 @@ class QR_Control:
                     elif cur_violations[j] > 0:
                         self.current_quantiles[j] += sign * 0.005
                         self.margin[j] += 2
-                    # PRIORITY 3: Excellent Performance (Drift back to baseline)
+                    # PRIORITY 3: Excellent Performance
                     elif recent_success_rate >= 0.999: # Almost perfect
                         self.current_quantiles[j] -= sign * 0.005
                         self.margin[j] -= 1
@@ -406,10 +399,9 @@ class QR_Control:
                         min_q, max_q = 0.01, 0.05
                     else:
                         min_q, max_q = 0.95, 0.99
-                    
+                        
                     self.current_quantiles[j] = np.clip(self.current_quantiles[j], min_q, max_q)
                     self.margin[j] = np.clip(self.margin[j], min_margin, max_margin)
-                
                 h.algorithm.set_quantile(self.current_quantiles[j])
             if i < learning_cutoff:
                 # The key change: passing the full 'info' dictionary

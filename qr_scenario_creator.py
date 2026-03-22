@@ -121,6 +121,7 @@ def create_qr_agent(rng, n, scenarios, quantile, embb_sla, mmtc_sla, qr_params, 
         )
         learners.append(learner)
         i += mmtc_dim
+        index += 1
 
     # The main controller wraps all the individual learners
     qr_agent = QR_Control(rng, learners, n_prbs, state_variables_embb, norms = norm_const_embb, 

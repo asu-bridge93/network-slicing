@@ -22,7 +22,7 @@ from scenario_creator import create_env
 from qr_scenario_creator import create_qr_agent
 import time
 
-scenarios = [1, 2, 3] # 0,1,2
+scenarios = [0] # 0,1,2
 quantile_list = [0.05] # , 0.01, 0.1, 0.25   0.05, 0.1, 0.25, 0.5 # , 0.05, 0.1
 
 # We define the SLA constraints for each slice type

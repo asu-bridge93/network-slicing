@@ -145,17 +145,21 @@ class KernelizedOnlineQuantileRegressor:
 
         if error > 0:
             # Standard under-prediction update
-            gradient_update = self.learning_rate * self.quantile
+            gradient_alpha = self.quantile
+            # eSQR Extension: Penalty for upper (delay) failure
+            if constraint_type == 'upper' and y_true > sla_threshold and prediction <= sla_threshold:
+                gradient_alpha *= self.gradient_penalty
+            
+            gradient_update = self.learning_rate * gradient_alpha
         else:
             # Standard over-prediction update
-            gradient_update = -self.learning_rate * (1 - self.quantile)
-            # Gradient penalty fires when the model failed to warn about a violation:
-            # lower constraint: violation when y_true < threshold (model over-predicted)
-            # upper constraint: violation when y_true > threshold (model under-predicted penalty)
+            gradient_alpha = (1 - self.quantile)
+            # Standard SQR Penalty: Penalty for lower (throughput) failure
             if constraint_type == 'lower' and y_true < sla_threshold and prediction >= sla_threshold:
-                gradient_update *= self.gradient_penalty
-            elif constraint_type == 'upper' and y_true > sla_threshold and prediction <= sla_threshold:
-                gradient_update *= self.gradient_penalty
+                gradient_alpha *= self.gradient_penalty
+                
+            gradient_update = -self.learning_rate * gradient_alpha
+
         # Step 3: Add the new data point x as a support vector and set its coefficient
         self.sv.add_support_vector(x, gradient_update, y_true)
     
