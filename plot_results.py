@@ -370,8 +370,8 @@ if __name__=='__main__':
             axs[violations_idx].axhline(y=0.05, color='gray', linestyle='--', linewidth=2, label='95% SLA')
             axs[violations_idx].set_xlabel('Step', fontsize=18)  # Add an x-label to the axes.
             axs[violations_idx].set_ylabel('SLA violations', fontsize=18)
-            axs[violations_idx].set_ylim((0, 0.1))
-            axs[violations_idx].set_yticks(np.arange(0, 0.1, 0.01))
+            axs[violations_idx].set_ylim((0, 0.06))
+            axs[violations_idx].set_yticks(np.arange(0, 0.06, 0.01))
             axs[violations_idx].set_xticks(np.arange(0, 10001, 2000))
             axs[violations_idx].tick_params(axis='x', labelsize=18)
             axs[violations_idx].tick_params(axis='y', labelsize=18)
@@ -383,8 +383,8 @@ if __name__=='__main__':
             ax_vio.axvline(x=2000, color='red', linestyle='--', linewidth=2, label='Full Budget')
             ax_vio.set_xlabel('Step', fontsize=18)  # Add an x-label to the axes.
             ax_vio.set_ylabel('SLA violations', fontsize=18)
-            ax_vio.set_ylim((0, 0.1))
-            ax_vio.set_yticks(np.arange(0, 0.1, 0.01))
+            ax_vio.set_ylim((0, 0.06))
+            ax_vio.set_yticks(np.arange(0, 0.06, 0.01))
             ax_vio.set_xticks(np.arange(0, 10001, 2000))
             ax_vio.tick_params(axis='x', labelsize=18)
             ax_vio.tick_params(axis='y', labelsize=18)
@@ -449,8 +449,8 @@ if __name__=='__main__':
         if algo == algo_names[-1] and global_has_ues:
             axs[ue_idx].set_xlabel('Step', fontsize=18)  # Add an x-label to the axes.
             axs[ue_idx].set_ylabel('number of UEs', fontsize=18)
-            axs[ue_idx].set_ylim((0,200)) # 15000
-            axs[ue_idx].set_yticks(np.arange(0, 201, 20))
+            axs[ue_idx].set_ylim((0,50)) # 15000
+            axs[ue_idx].set_yticks(np.arange(0, 51, 20))
             axs[ue_idx].set_xticks(np.arange(0, 10001, 2000))
             axs[ue_idx].tick_params(axis='x', labelsize=18)
             axs[ue_idx].tick_params(axis='y', labelsize=18)
