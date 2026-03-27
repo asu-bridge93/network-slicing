@@ -86,12 +86,13 @@ if __name__=='__main__':
     dir_path = './results/scenario_{}/'.format(scenario)
     #dir_path = './results/#scenario_{}_QR_margin_self-learn_best/'.format(scenario)
     algo_names = get_folder_names(dir_path)
-    algo_names.sort()
+    order_map = {'KBRL': 0, 'QR_nocost': 1, 'QR_cost': 2}
+    algo_names.sort(key=lambda x: order_map.get(x, 99))
     #algo_names = get_names()
     #labels = algo_names
     labels = []
     for algo_name in algo_names:
-        if algo_name == 'KBRL_97':
+        if algo_name == 'KBRL':
             labels.append('KBRL')
             continue
         label = algo_name.split('_')[0] + '_' + algo_name.split('_')[-1]
@@ -103,7 +104,7 @@ if __name__=='__main__':
     #print(algo_names)
     prbs = prbs_values[scenario]
 
-    save_path = './results/scenario_{}/subplots_wkblr'.format(scenario)
+    save_path = './figures/subplots_{}'.format(scenario)
     #save_path = './results/#scenario_{}_QR_margin_self-learn_best/subplots_wkblr'.format(scenario)
 
     # Generate distinct colors from a colormap
@@ -125,8 +126,19 @@ if __name__=='__main__':
     fig_cumvio = plt.figure(figsize=(10, 6))
     ax_cumvio = fig_cumvio.add_subplot()
 
+    # Ensure we only track valid algorithms
+    valid_algos, valid_labels = [], []
+    for a, l in zip(algo_names, labels):
+        p = f'./results/scenario_{scenario}/{a}/'
+        if os.path.isdir(p) and any(f.endswith('.npz') for f in os.listdir(p)):
+            valid_algos.append(a); valid_labels.append(l)
+    algo_names, labels = valid_algos, valid_labels
+
     colors = []
     plot_data = []
+    global_has_ues = False
+    global_has_safe_set = False
+
     # iterate over algorithms
     for algo, label in zip(algo_names, labels):
         violations = np.empty([1])
@@ -164,10 +176,12 @@ if __name__=='__main__':
                     _ue = histories['ue']
                     _ue = np.array([np.sum(r) for r in _ue], dtype=np.int16)
                     has_ues = True
+                    global_has_ues = True
                 if 'safe set' in histories:
                     _safe_set = histories['safe set']
                     _safe_set = np.array([np.mean(r) for r in _safe_set], dtype=np.int16)
                     has_safe_set = True
+                    global_has_safe_set = True
                 if len(_violations) < END:
                     continue
                 _violations = _violations[START:END]
@@ -204,6 +218,9 @@ if __name__=='__main__':
                         accuracy = np.vstack((accuracy, movingaverage(np.mean(histories['hits'], axis=0), WINDOW)))
         
         print('Algorithm {}'.format(algo))
+        if runs == 0:
+            print('No valid runs found for {}'.format(algo))
+            continue
         
         # average over different runs
 
@@ -264,7 +281,10 @@ if __name__=='__main__':
             axs[action_idx].legend(loc='best', fontsize=18)
             axs[action_idx].grid()
         '''
-        avg_per_run = actions.mean(axis=1)  # Assume actions_dict[algo] is (30, T)
+        if actions.ndim == 1:
+            avg_per_run = [actions.mean()]
+        else:
+            avg_per_run = actions.mean(axis=1)  # Assume actions_dict[algo] is (runs, T)
         if label != 'KBRL':
             avg_per_run = sorted(avg_per_run)[:10]  # Take best 15 runs
         for val in avg_per_run:
@@ -330,7 +350,7 @@ if __name__=='__main__':
             ax_rb.set_ylabel('PRBs', fontsize=18)
             #ax_rb.set_title('Resource Allocation', fontsize=18)
             fig_rb.tight_layout()
-            fig_rb.savefig(save_path.format(scenario)+'_rb', format='png', transparent=True, dpi=300.0)
+            fig_rb.savefig(save_path+'_rb.png', format='png', transparent=True, dpi=300.0)
         
         steps = np.arange(len(violations_mean[0:SPAN]))
         axs[violations_idx].set_title('SLA violations', fontsize=18)
@@ -350,8 +370,8 @@ if __name__=='__main__':
             axs[violations_idx].axhline(y=0.05, color='gray', linestyle='--', linewidth=2, label='95% SLA')
             axs[violations_idx].set_xlabel('Step', fontsize=18)  # Add an x-label to the axes.
             axs[violations_idx].set_ylabel('SLA violations', fontsize=18)
-            axs[violations_idx].set_ylim((0, 0.1))
-            axs[violations_idx].set_yticks(np.arange(0, 0.11, 0.01))
+            axs[violations_idx].set_ylim((0, 0.06))
+            axs[violations_idx].set_yticks(np.arange(0, 0.06, 0.01))
             axs[violations_idx].set_xticks(np.arange(0, 10001, 2000))
             axs[violations_idx].tick_params(axis='x', labelsize=18)
             axs[violations_idx].tick_params(axis='y', labelsize=18)
@@ -363,15 +383,15 @@ if __name__=='__main__':
             ax_vio.axvline(x=2000, color='red', linestyle='--', linewidth=2, label='Full Budget')
             ax_vio.set_xlabel('Step', fontsize=18)  # Add an x-label to the axes.
             ax_vio.set_ylabel('SLA violations', fontsize=18)
-            ax_vio.set_ylim((0, 0.1))
-            ax_vio.set_yticks(np.arange(0, 0.11, 0.01))
+            ax_vio.set_ylim((0, 0.06))
+            ax_vio.set_yticks(np.arange(0, 0.06, 0.01))
             ax_vio.set_xticks(np.arange(0, 10001, 2000))
             ax_vio.tick_params(axis='x', labelsize=18)
             ax_vio.tick_params(axis='y', labelsize=18)
             ax_vio.legend(loc='best', fontsize=18)
             ax_vio.grid()
             fig_vio.tight_layout()
-            fig_vio.savefig(save_path.format(scenario)+'_vio', format='png', transparent=True, dpi=300.0)
+            fig_vio.savefig(save_path+'_vio.png', format='png', transparent=True, dpi=300.0)
         
         steps = np.arange(len(rewards_mean[0:SPAN]))
         axs[rewards_idx].set_title('Rewards', fontsize=18)
@@ -415,7 +435,7 @@ if __name__=='__main__':
             ax_cumvio.legend(loc='best', fontsize=18)
             ax_cumvio.grid() 
             fig_cumvio.tight_layout()
-            fig_cumvio.savefig(save_path.format(scenario)+'_cumvio', format='png', transparent=True, dpi=300.0)
+            fig_cumvio.savefig(save_path+'_cumvio.png', format='png', transparent=True, dpi=300.0)
 
         if has_ues:
             ue_steps = np.arange(len(ue_mean[0:SPAN]))
@@ -425,16 +445,17 @@ if __name__=='__main__':
             axs[ue_idx].fill_between(ue_steps, ue_mean[0:SPAN] - 1.697 * ue_std[0:SPAN] / np.sqrt(runs), 
                             ue_mean[0:SPAN] + 1.697 * ue_std[0:SPAN] / np.sqrt(runs), color = color_map[algo],
                             alpha=0.3, label='_nolegend_')
-            if algo == algo_names[-1]:
-                axs[ue_idx].set_xlabel('Step', fontsize=18)  # Add an x-label to the axes.
-                axs[ue_idx].set_ylabel('number of UEs', fontsize=18)
-                axs[ue_idx].set_ylim((0,10)) # 15000
-                axs[ue_idx].set_yticks(np.arange(0, 11, 1))
-                axs[ue_idx].set_xticks(np.arange(0, 10001, 2000))
-                axs[ue_idx].tick_params(axis='x', labelsize=18)
-                axs[ue_idx].tick_params(axis='y', labelsize=18)
-                axs[ue_idx].legend(loc='best', fontsize=18)
-                axs[ue_idx].grid()      
+
+        if algo == algo_names[-1] and global_has_ues:
+            axs[ue_idx].set_xlabel('Step', fontsize=18)  # Add an x-label to the axes.
+            axs[ue_idx].set_ylabel('number of UEs', fontsize=18)
+            axs[ue_idx].set_ylim((0,50)) # 15000
+            axs[ue_idx].set_yticks(np.arange(0, 51, 20))
+            axs[ue_idx].set_xticks(np.arange(0, 10001, 2000))
+            axs[ue_idx].tick_params(axis='x', labelsize=18)
+            axs[ue_idx].tick_params(axis='y', labelsize=18)
+            axs[ue_idx].legend(loc='best', fontsize=18)
+            axs[ue_idx].grid()      
 
         if has_safe_set:
             axs[safe_set_idx].set_title('Safe Set', fontsize=18)
@@ -443,30 +464,23 @@ if __name__=='__main__':
             axs[safe_set_idx].fill_between(steps, safe_set_mean[0:SPAN] - 1.697 * safe_set_std[0:SPAN] / np.sqrt(runs), 
                             safe_set_mean[0:SPAN] + 1.697 * safe_set_std[0:SPAN] / np.sqrt(runs), color = color_map[algo],
                         alpha=0.3, label='_nolegend_')
-            if algo == algo_names[-1]:
-                axs[safe_set_idx].set_xlabel('Step', fontsize=18)  # Add an x-label to the axes.
-                axs[safe_set_idx].set_ylabel('safe set', fontsize=18)
-                axs[safe_set_idx].set_ylim((0,40)) # 15000
-                axs[safe_set_idx].set_yticks(np.arange(0, 41, 5))
-                axs[safe_set_idx].set_xticks(np.arange(0, 10001, 2000))
-                axs[safe_set_idx].tick_params(axis='x', labelsize=18)
-                axs[safe_set_idx].tick_params(axis='y', labelsize=18)
-                axs[safe_set_idx].legend(loc='best', fontsize=18)
-                axs[safe_set_idx].grid()   
 
-                # Add zoom-in inset
-
-                #axins = inset_axes(axs[4], width="40%", height="40%", loc='upper right', borderpad=2)
-                #axins.plot(steps, safe_set_mean[0:SPAN], linewidth=2)
-                #axins.fill_between(steps, safe_set_mean - safe_set_std, safe_set_mean + safe_set_std, alpha=0.3)
-                #axins.set_xlim(0, 50)
-                #axins.set_ylim(0.9, 1.1)
-                #axins.set_xticks([0, 25, 50])
-                #axins.set_yticks([0.9, 0.95, 1.1])
-                #axins.tick_params(labelsize=8)
-                #mark_inset(axs[4], axins, loc1=2, loc2=4, fc="none", ec="0.5")
+        if algo == algo_names[-1] and global_has_safe_set:
+            axs[safe_set_idx].set_xlabel('Step', fontsize=18)  # Add an x-label to the axes.
+            axs[safe_set_idx].set_ylabel('safe set', fontsize=18)
+            axs[safe_set_idx].set_ylim((0,40)) # 15000
+            axs[safe_set_idx].set_yticks(np.arange(0, 41, 5))
+            axs[safe_set_idx].set_xticks(np.arange(0, 10001, 2000))
+            axs[safe_set_idx].tick_params(axis='x', labelsize=18)
+            axs[safe_set_idx].tick_params(axis='y', labelsize=18)
+            axs[safe_set_idx].legend(loc='best', fontsize=18)
+            axs[safe_set_idx].grid()   
         
         if algo == algo_names[-1]:
+            if not global_has_ues:
+                fig.delaxes(axs[ue_idx])
+            if not global_has_safe_set:
+                fig.delaxes(axs[safe_set_idx])
             # Create a single legend above all subplots
             ncol = len(labels)
             if len(labels) > 10:
@@ -478,8 +492,8 @@ if __name__=='__main__':
             fig.tight_layout(rect=[0, 0, 1, 0.95])
 
             if START > 0:
-                fig.savefig(save_path.format(scenario), format='png')
+                fig.savefig(save_path+'.png', format='png')
             else:
                 # fig.savefig('./figures/subplots_{}.svg'.format(scenario), format='svg')
-                fig.savefig(save_path.format(scenario), format='png')
+                fig.savefig(save_path+'.png', format='png')
             # fig.savefig('_subplots_' + scenario + '.svg', format='svg')       

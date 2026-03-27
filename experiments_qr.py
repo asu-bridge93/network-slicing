@@ -47,7 +47,7 @@ QR_PARAMS = {
     'matern_length_scale': 0.1,  # for Matern kernel
     'matern_nu': 1.5,            # nu for Matern kernel, only 0.5, 1.5, and 2.5 available
     'exploration_factor': 0,
-    'resource_cost_factor': 3.0,
+    'resource_cost_factor': 0.0,
     'gradient_penalty': 2.0,
     'epsilon': 0.1,
     'k_neighbors': 10,
@@ -96,7 +96,7 @@ class Evaluator():
     def evaluate(self, i):
         seed = int(time.time()+i)
         rng = default_rng(seed = seed)
-        node_env = create_env(rng, all_scenarios = all_scenarios, n = self.scenario, slots_per_step = SLOT_PER_STEP, penalty = PENALTY, quantile = int(quantile*100))
+        node_env = create_env(rng, all_scenarios = all_scenarios, n = self.scenario, slots_per_step = SLOT_PER_STEP, penalty = PENALTY, quantile = int(self.quantile*100))
         print('test {}, quantile {}, run {}: Environment created!'.format(name, self.a, i))
         qr_agent = create_qr_agent(rng, self.scenario, all_scenarios, quantile = self.quantile, 
                                      embb_sla = embb_sla, mmtc_sla = mmtc_sla, qr_params = QR_PARAMS, slots_per_step = SLOT_PER_STEP )
@@ -120,5 +120,5 @@ if __name__=='__main__':
         # ################################################################
         # use this code for parallel execution
         with cf.ProcessPoolExecutor(PROCESSES) as E:
-            results = E.map(evaluator.evaluate, run_list)
+            results = list(E.map(evaluator.evaluate, run_list))
         # ################################################################

@@ -15,11 +15,11 @@ import os
 START = 40000
 END = 49500
 
-titles = ['Scenario 1', 'Scenario 2', 'Scenario 3']
+titles = ['Scenario 0', 'Scenario 1', 'Scenario 2']
 scenarios = [0, 1, 2]
 
-algo_names = ['A2C', 'PPO1', 'PPO2', 'TRPO', 'SAC', 'TD3', 'NAF', 'KBRL_97','KBRL_99']
-labels = ['A2C', 'PPO1', 'PPO2', 'TRPO', 'SAC', 'TD3', 'NAF', 'KBRL 0.97', 'KBRL 0.99']
+algo_names = ['A2C', 'PPO1', 'PPO2', 'TRPO', 'SAC', 'TD3', 'NAF', 'KBRL']
+labels = ['A2C', 'PPO1', 'PPO2', 'TRPO', 'SAC', 'TD3', 'NAF', 'KBRL']
 
 SPAN = END - START
 
@@ -46,16 +46,22 @@ for i, (j, title) in enumerate(zip(scenarios,titles)):
         runs = 0
         violations = []
         resources = []
+        if not os.path.exists(path):
+            continue
         # iterate over files
         for filename in os.listdir(path):
             if filename.endswith(".npz"):
-                histories = np.load(path + filename)
+                histories = np.load(path + filename, allow_pickle=True)
                 _violations = histories['violation']
+                _violations = np.array([np.sum(r) for r in _violations], dtype=np.int16)
                 _resources = histories['resources']
                 if len(_violations) < END:
                     continue
                 violations.append(_violations[START:END].mean())
                 resources.append(_resources[START:END].mean()/PRBS)
+
+        if not violations:
+            continue
 
         v, v_h = mean_confidence_radius(violations)
 

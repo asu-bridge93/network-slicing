@@ -46,7 +46,7 @@ MTC_description = {
 state_variables_mmtc = ['devices', 'avg_rep', 'delay']
 
 SLA_mmtc = {
-    'delay': 300 # Maximum per user delay: 300ms
+    'delay': 10000 # Maximum per user delay: 10000ms
 }
 
 # -------------------- create environment -------------------------

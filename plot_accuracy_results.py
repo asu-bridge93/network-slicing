@@ -10,11 +10,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-titles = ['Scenario 1', 'Scenario 2', 'Scenario 3']
+titles = ['Scenario 0', 'Scenario 1', 'Scenario 2']
 scenarios = [0, 1, 2]
 
-algo_names = ['KBRL_97', 'KBRL_99']
-labels = ['KBRL 0.97', 'KBRL 0.99']
+algo_names = ['KBRL']
+labels = ['KBRL']
 WINDOW = 400
 SPAN = 20000
 
@@ -42,6 +42,8 @@ for i, (j, title) in enumerate(zip(scenarios,titles)):
         path = './results/scenario_{}/{}/'.format(j,algo)
         runs = 0
 
+        if not os.path.exists(path):
+            continue
         # iterate over files
         for filename in os.listdir(path):
             if filename.endswith(".npz"):
@@ -54,16 +56,19 @@ for i, (j, title) in enumerate(zip(scenarios,titles)):
                 else: # store the history of each run
                     accuracy = np.vstack((accuracy, movingaverage(np.mean(histories['hits'], axis=0), WINDOW)))
                             
+        if runs == 0:
+            continue
         # average over different runs
         accuracy_mean = np.mean(accuracy, axis=0)
         accuracy_std = np.std(accuracy, axis=0)
             
         # plot results
-        steps = np.arange(len(accuracy_mean[0:SPAN]))
+        span = min(SPAN, len(accuracy_mean))
+        steps = np.arange(span)
 
-        axs[i].plot(steps, accuracy_mean[0:SPAN], label = label)
-        axs[i].fill_between(steps, accuracy_mean[0:SPAN] - 1.95 * accuracy_std[0:SPAN] / np.sqrt(runs), 
-                            accuracy_mean[0:SPAN] + 1.95 * accuracy_std[0:SPAN] / np.sqrt(runs), color = '#DDDDDD')
+        axs[i].plot(steps, accuracy_mean[0:span], label = label)
+        axs[i].fill_between(steps, accuracy_mean[0:span] - 1.95 * accuracy_std[0:span] / np.sqrt(runs), 
+                            accuracy_mean[0:span] + 1.95 * accuracy_std[0:span] / np.sqrt(runs), color = '#DDDDDD')
 
         if algo == algo_names[-1]:
             axs[i].set_ylim((0.94,1.005))

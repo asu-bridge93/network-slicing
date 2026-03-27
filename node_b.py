@@ -49,7 +49,7 @@ class NodeB():
     
     def get_info(self, violations = 0, SLA_labels = 0):
         info = {'l1_info': [l1.get_info() for l1 in self.slices_l1], 'SLA_labels': SLA_labels, \
-                'violations': violations, 'n_prbs': [l1.n_prbs for l1 in self.slices_l1], 'ues': [len(l1.ues) for l1 in self.slices_l1]}
+                'violations': violations, 'n_prbs': [l1.n_prbs for l1 in self.slices_l1], 'ues': [len(l1.ues) if hasattr(l1, 'ues') else l1.n_users for l1 in self.slices_l1]}
         return info
 
     def compute_reward(self):
@@ -75,7 +75,7 @@ class NodeB():
         # configure slices
         i_prb = 0
         for slice_l1, prbs in zip(self.slices_l1, action):
-            self.ues += len(slice_l1.ues)
+            self.ues += len(slice_l1.ues) if hasattr(slice_l1, 'ues') else slice_l1.n_users
             slice_l1.set_prbs(i_prb, prbs)
             i_prb += prbs
 
@@ -95,6 +95,7 @@ class NodeB():
         self.steps += 1
         
         for slice_l1 in self.slices_l1:
-            slice_l1.reset_ue_bits()
+            if hasattr(slice_l1, 'reset_ue_bits'):
+                slice_l1.reset_ue_bits()
 
         return state, info

@@ -20,8 +20,8 @@ import concurrent.futures as cf
 from scenario_creator import create_env
 from kbrl_scenario_creator import create_kbrl_agent
 
-scenarios = [0] # ,1,2
-accuracy_list = [[0.97, 0.99]] # , [0.99, 0.999] 0.97, 
+scenarios = [0, 1, 2, 3]
+accuracy_list = [[0.97, 0.99]]
 
 scenario_1 = { 'n_prbs': 100, 'n_embb': 3, 'n_mmtc': 0}
 scenario_2 = { 'n_prbs': 150, 'n_embb': 3, 'n_mmtc': 2}
@@ -47,8 +47,7 @@ class Evaluator():
     def __init__(self, scenario, a_range):
         self.scenario = scenario
         self.a_range = a_range
-        a = int(a_range[0]*100)
-        self.path = './results/scenario_{}/{}_{}/'.format(scenario, name, a)
+        self.path = './results/scenario_{}/{}/'.format(scenario, name)
         if not os.path.isdir(self.path):
             try:
                 os.makedirs(self.path)
